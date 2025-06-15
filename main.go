@@ -15,11 +15,19 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
+	platform       string
 }
 
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %s", err)
@@ -28,7 +36,7 @@ func main() {
 
 	const port = "8080"
 
-	apiCfg := apiConfig{dbQueries: dbQueries}
+	apiCfg := apiConfig{dbQueries: dbQueries, platform: platform}
 	mux := http.NewServeMux()
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -39,6 +47,7 @@ func main() {
 	mux.Handle("POST /admin/reset", http.HandlerFunc(apiCfg.resetHandler))
 	mux.Handle("GET /admin/metrics", http.HandlerFunc(apiCfg.metricsHandler))
 	mux.Handle("POST /api/validate_chirp", http.HandlerFunc(handlerChripsValidate))
+	mux.Handle("POST /api/users", http.HandlerFunc(apiCfg.createUserHandler))
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 }

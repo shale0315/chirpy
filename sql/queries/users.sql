@@ -8,3 +8,8 @@ VALUES (
     $1
 )
 RETURNING *;
+
+
+-- name: ResetUsers :execresult
+
+DELETE FROM users;
