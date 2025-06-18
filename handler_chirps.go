@@ -1,8 +1,8 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
-
 	"net/http"
 	"time"
 
@@ -74,4 +74,30 @@ func (cfg *apiConfig) SortChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJson(w, http.StatusOK, finalChirpSlice)
+}
+
+func (cfg *apiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
+	chirp_id := r.PathValue("chirp_id")
+	chirp_id_uuid, err := uuid.Parse(chirp_id)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error parsing id", err)
+		return
+	}
+	chirp, err := cfg.dbQueries.GetChirp(r.Context(), (chirp_id_uuid))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondWithError(w, 404, "Error finding chirp", err)
+			return
+		}
+		respondWithError(w, 400, "Other error", err)
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, ReturnChirp{
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+		ChirpId:   chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+	})
 }
