@@ -13,3 +13,4 @@ RETURNING *;
 -- name: ResetUsers :execresult
 
 DELETE FROM users;
+
