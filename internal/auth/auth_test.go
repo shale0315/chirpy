@@ -11,10 +11,10 @@ import (
 func TestMakeJWT(t *testing.T) {
 	userID := uuid.New()
 	secret := "testSecret"
-	expires_in := time.Hour
+	// expires_in := time.Hour
 
 	//Test Creating JWT
-	token, err := MakeJWT(userID, secret, expires_in)
+	token, err := MakeJWT(userID, secret)
 	if err != nil {
 		t.Fatalf("Failed to create JWT: %v", err)
 	}
@@ -34,11 +34,11 @@ func TestMakeJWT(t *testing.T) {
 func TestInvalidSecret(t *testing.T) {
 	userID := uuid.New()
 	secret := "testSecret"
-	expires_in := time.Hour
+	// expires_in := time.Hour
 	wrong_secret := "UndertheFloor!"
 
 	//Test Creating JWT
-	token, err := MakeJWT(userID, secret, expires_in)
+	token, err := MakeJWT(userID, secret)
 	if err != nil {
 		t.Fatalf("Failed to create JWT: %v", err)
 	}
@@ -53,10 +53,10 @@ func TestInvalidSecret(t *testing.T) {
 func TestExpiredToken(t *testing.T) {
 	userID := uuid.New()
 	secret := "testSecret"
-	expires_in := time.Second
+	// expires_in := time.Second
 
 	//Test Creating JWT
-	token, err := MakeJWT(userID, secret, expires_in)
+	token, err := MakeJWT(userID, secret)
 	if err != nil {
 		t.Fatalf("Failed to create JWT: %v", err)
 	}

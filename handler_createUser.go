@@ -53,3 +53,43 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	respondWithJson(w, 201, jsonUser)
 }
+
+func (cfg *apiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
+	type TokenResponse struct {
+		Token string `json:"token"`
+	}
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	refresh_token, get_user_err := cfg.dbQueries.GetUserFromRefresh(r.Context(), token)
+	if get_user_err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Failed to retrieve user information", get_user_err)
+		return
+	}
+	if (time.Now().After(refresh_token.ExpiresAt)) || (refresh_token.RevokedAt.Valid) {
+		respondWithError(w, http.StatusUnauthorized, "Invalid refresh token", nil)
+		return
+	}
+	jwt_token, jwt_err := auth.MakeJWT(refresh_token.UserID, cfg.secret)
+	if jwt_err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error forming token", jwt_err)
+		return
+	}
+	respondWithJson(w, http.StatusOK, TokenResponse{jwt_token})
+}
+
+func (cfg *apiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	_, revoke_err := cfg.dbQueries.RevokeToken(r.Context(), token)
+	if revoke_err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error updating database", revoke_err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

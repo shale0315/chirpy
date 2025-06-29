@@ -56,6 +56,8 @@ func main() {
 	mux.Handle("GET /api/chirps/{chirp_id}", http.HandlerFunc(apiCfg.GetChirp))
 	mux.Handle("POST /api/users", http.HandlerFunc(apiCfg.createUserHandler))
 	mux.Handle("POST /api/login", http.HandlerFunc(apiCfg.LoginHandler))
+	mux.Handle("POST /api/refresh", http.HandlerFunc(apiCfg.PostRefresh))
+	mux.Handle("POST /api/revoke", http.HandlerFunc(apiCfg.PostRevoke))
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 }

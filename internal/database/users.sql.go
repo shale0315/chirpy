@@ -8,6 +8,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -41,6 +44,24 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getUserFromRefresh = `-- name: GetUserFromRefresh :one
+
+SELECT user_id,expires_at,revoked_at FROM refresh_tokens WHERE token=$1
+`
+
+type GetUserFromRefreshRow struct {
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+}
+
+func (q *Queries) GetUserFromRefresh(ctx context.Context, token string) (GetUserFromRefreshRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromRefresh, token)
+	var i GetUserFromRefreshRow
+	err := row.Scan(&i.UserID, &i.ExpiresAt, &i.RevokedAt)
+	return i, err
+}
+
 const login = `-- name: Login :one
 
 SELECT id, created_at, updated_at, email, hashed_password FROM users WHERE email=$1
@@ -66,4 +87,49 @@ DELETE FROM users
 
 func (q *Queries) ResetUsers(ctx context.Context) (sql.Result, error) {
 	return q.db.ExecContext(ctx, resetUsers)
+}
+
+const revokeToken = `-- name: RevokeToken :execresult
+
+UPDATE refresh_tokens
+SET revoked_at=NOW(), updated_at=NOW()
+WHERE token=$1
+`
+
+func (q *Queries) RevokeToken(ctx context.Context, token string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, revokeToken, token)
+}
+
+const storeRefreshToken = `-- name: StoreRefreshToken :one
+
+INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at, revoked_at)
+VALUES (
+    $1,
+    NOW(),
+    NOW(),
+    $2,
+    $3,
+    NULL
+)
+RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
+`
+
+type StoreRefreshTokenParams struct {
+	Token     string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+}
+
+func (q *Queries) StoreRefreshToken(ctx context.Context, arg StoreRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, storeRefreshToken, arg.Token, arg.UserID, arg.ExpiresAt)
+	var i RefreshToken
+	err := row.Scan(
+		&i.Token,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+	)
+	return i, err
 }
