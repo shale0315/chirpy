@@ -17,6 +17,10 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
+type TokenResponse struct {
+	Token string `json:"token"`
+}
+
 func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	type Body struct {
 		Email    string `json:"email"`
@@ -55,9 +59,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
-	type TokenResponse struct {
-		Token string `json:"token"`
-	}
+
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
@@ -92,4 +94,49 @@ func (cfg *apiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (cfg *apiConfig) UpdateCredsRequest(w http.ResponseWriter, r *http.Request) {
+	token, jwt_err := auth.GetBearerToken(r.Header)
+	if jwt_err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", jwt_err)
+		return
+	}
+	userUUID, uuid_err := auth.ValidateJWT(token, cfg.secret)
+	if uuid_err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", uuid_err)
+		return
+	}
+	type NewCredsRequest struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	newCreds := NewCredsRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&newCreds)
+	if err != nil {
+		respondWithError(w, http.StatusExpectationFailed, "Error decoding", err)
+		return
+	}
+	hashedPW, err := auth.HashPassword(newCreds.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error hashing password", err)
+		return
+	}
+	updatedUser, err := cfg.dbQueries.UpdateCreds(r.Context(), database.UpdateCredsParams{
+		Email:          newCreds.Email,
+		HashedPassword: hashedPW,
+		ID:             userUUID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Failed to update", err)
+		return
+	}
+	jsonUser := User{
+		ID:        updatedUser.ID,
+		CreatedAt: updatedUser.CreatedAt,
+		UpdatedAt: updatedUser.UpdatedAt,
+		Email:     updatedUser.Email,
+	}
+	respondWithJson(w, http.StatusOK, jsonUser)
 }

@@ -58,6 +58,7 @@ func main() {
 	mux.Handle("POST /api/login", http.HandlerFunc(apiCfg.LoginHandler))
 	mux.Handle("POST /api/refresh", http.HandlerFunc(apiCfg.PostRefresh))
 	mux.Handle("POST /api/revoke", http.HandlerFunc(apiCfg.PostRevoke))
+	mux.Handle("PUT /api/users", http.HandlerFunc(apiCfg.UpdateCredsRequest))
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 }

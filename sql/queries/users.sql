@@ -43,3 +43,11 @@ SELECT user_id,expires_at,revoked_at FROM refresh_tokens WHERE token=$1;
 UPDATE refresh_tokens
 SET revoked_at=NOW(), updated_at=NOW()
 WHERE token=$1;
+
+
+-- name: UpdateCreds :one
+
+UPDATE users
+SET updated_at=NOW(), email=$1, hashed_password=$2
+WHERE id=$3
+RETURNING id, created_at, updated_at, email;
