@@ -144,6 +144,12 @@ func (cfg *apiConfig) UpdateCredsRequest(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) UpgradeChirpyRed(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if apiKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+
 	type Data struct {
 		User_id uuid.UUID `json:"user_id"`
 	}
@@ -154,7 +160,7 @@ func (cfg *apiConfig) UpgradeChirpyRed(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	webhookRequest := Webhook{}
-	err := decoder.Decode(&webhookRequest)
+	err = decoder.Decode(&webhookRequest)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Error processing request", err)
 		return

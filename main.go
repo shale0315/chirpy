@@ -17,6 +17,7 @@ type apiConfig struct {
 	dbQueries      *database.Queries
 	platform       string
 	secret         string
+	polkaKey       string
 }
 
 func main() {
@@ -31,7 +32,11 @@ func main() {
 	}
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		log.Fatal("JWT_SECRET mustbe set")
+		log.Fatal("JWT_SECRET must be set")
+	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("POLKA_KEY must be set")
 	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -41,7 +46,12 @@ func main() {
 
 	const port = "8080"
 
-	apiCfg := apiConfig{dbQueries: dbQueries, platform: platform, secret: secret}
+	apiCfg := apiConfig{
+		dbQueries: dbQueries,
+		platform:  platform,
+		secret:    secret,
+		polkaKey:  polkaKey,
+	}
 	mux := http.NewServeMux()
 	srv := &http.Server{
 		Addr:    ":" + port,
