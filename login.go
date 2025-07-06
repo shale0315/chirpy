@@ -17,6 +17,7 @@ type UserLogin struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,12 +44,6 @@ func (cfg *apiConfig) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", check_hash_err)
 		return
 	}
-	// var expiresInSecs int
-	// if (userCreds.ExpiresInSeconds == nil) || (*userCreds.ExpiresInSeconds > 3600) {
-	// 	expiresInSecs = 3600
-	// } else {
-	// 	expiresInSecs = *userCreds.ExpiresInSeconds
-	// }
 
 	jwt_token, token_error := auth.MakeJWT(user.ID, cfg.secret)
 	if token_error != nil {
@@ -78,5 +73,6 @@ func (cfg *apiConfig) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        jwt_token,
 		RefreshToken: refresh_token,
+		IsChirpyRed:  user.IsChirpyRed,
 	})
 }

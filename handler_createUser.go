@@ -11,10 +11,11 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 type TokenResponse struct {
@@ -50,10 +51,11 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	jsonUser := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 	respondWithJson(w, 201, jsonUser)
 }
@@ -139,4 +141,41 @@ func (cfg *apiConfig) UpdateCredsRequest(w http.ResponseWriter, r *http.Request)
 		Email:     updatedUser.Email,
 	}
 	respondWithJson(w, http.StatusOK, jsonUser)
+}
+
+func (cfg *apiConfig) UpgradeChirpyRed(w http.ResponseWriter, r *http.Request) {
+	type Data struct {
+		User_id uuid.UUID `json:"user_id"`
+	}
+	type Webhook struct {
+		Event string `json:"event"`
+		Data  Data   `json:"data"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	webhookRequest := Webhook{}
+	err := decoder.Decode(&webhookRequest)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error processing request", err)
+		return
+	}
+	if webhookRequest.Event != "user.upgraded" {
+		respondWithJson(w, http.StatusNoContent, nil)
+		return
+	}
+	result, err := cfg.dbQueries.UpgradeToChirpyRed(r.Context(), webhookRequest.Data.User_id)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Failed to upgrade user", err)
+		return
+	}
+	rows_affected, err := result.RowsAffected()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to get rows affected", err)
+		return
+	}
+	if rows_affected == 0 {
+		respondWithError(w, http.StatusNotFound, "User not found", nil)
+		return
+	}
+	respondWithJson(w, http.StatusNoContent, nil)
 }

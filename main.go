@@ -59,6 +59,8 @@ func main() {
 	mux.Handle("POST /api/refresh", http.HandlerFunc(apiCfg.PostRefresh))
 	mux.Handle("POST /api/revoke", http.HandlerFunc(apiCfg.PostRevoke))
 	mux.Handle("PUT /api/users", http.HandlerFunc(apiCfg.UpdateCredsRequest))
+	mux.Handle("DELETE /api/chirps/{chirp_id}", http.HandlerFunc(apiCfg.DeleteChirpRequest))
+	mux.Handle("POST /api/polka/webhooks", http.HandlerFunc(apiCfg.UpgradeChirpyRed))
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 }
