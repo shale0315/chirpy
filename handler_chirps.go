@@ -68,6 +68,32 @@ func (cfg *apiConfig) ChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) SortChirpHandler(w http.ResponseWriter, r *http.Request) {
 	var finalChirpSlice []ReturnChirp
+
+	author_id := r.URL.Query().Get("author_id")
+	if author_id != "" {
+		authorUUID, err := uuid.Parse(author_id)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to parse ID", err)
+			return
+		}
+		chirpsByID, err := cfg.dbQueries.GetChirpsByAuthor(r.Context(), authorUUID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Could not retrieve chirps", err)
+		}
+		for _, chirp := range chirpsByID {
+			transformedChirp := ReturnChirp{
+				Body:      chirp.Body,
+				UserID:    chirp.UserID,
+				ChirpId:   chirp.ID,
+				CreatedAt: chirp.CreatedAt,
+				UpdatedAt: chirp.UpdatedAt,
+			}
+			finalChirpSlice = append(finalChirpSlice, transformedChirp)
+		}
+		respondWithJson(w, http.StatusOK, finalChirpSlice)
+		return
+	}
+
 	sortedChirps, err := cfg.dbQueries.SortChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirps", err)
