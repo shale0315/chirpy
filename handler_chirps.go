@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,30 +69,21 @@ func (cfg *apiConfig) ChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) SortChirpHandler(w http.ResponseWriter, r *http.Request) {
 	var finalChirpSlice []ReturnChirp
+	authorUUID := uuid.Nil
 
 	author_id := r.URL.Query().Get("author_id")
 	if author_id != "" {
-		authorUUID, err := uuid.Parse(author_id)
+		var err error
+		authorUUID, err = uuid.Parse(author_id)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to parse ID", err)
 			return
 		}
-		chirpsByID, err := cfg.dbQueries.GetChirpsByAuthor(r.Context(), authorUUID)
-		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Could not retrieve chirps", err)
-		}
-		for _, chirp := range chirpsByID {
-			transformedChirp := ReturnChirp{
-				Body:      chirp.Body,
-				UserID:    chirp.UserID,
-				ChirpId:   chirp.ID,
-				CreatedAt: chirp.CreatedAt,
-				UpdatedAt: chirp.UpdatedAt,
-			}
-			finalChirpSlice = append(finalChirpSlice, transformedChirp)
-		}
-		respondWithJson(w, http.StatusOK, finalChirpSlice)
-		return
+	}
+	sortDesc := false
+	sortParameter := r.URL.Query().Get("sort")
+	if sortParameter == "desc" {
+		sortDesc = true
 	}
 
 	sortedChirps, err := cfg.dbQueries.SortChirps(r.Context())
@@ -101,16 +93,22 @@ func (cfg *apiConfig) SortChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, chirp := range sortedChirps {
-		transformedChirp := ReturnChirp{
+		if (authorUUID != uuid.Nil) && (chirp.UserID != authorUUID) {
+			continue
+		}
+		finalChirpSlice = append(finalChirpSlice, ReturnChirp{
 			Body:      chirp.Body,
 			UserID:    chirp.UserID,
 			ChirpId:   chirp.ID,
 			CreatedAt: chirp.CreatedAt,
 			UpdatedAt: chirp.UpdatedAt,
-		}
-		finalChirpSlice = append(finalChirpSlice, transformedChirp)
+		})
 	}
-
+	if sortDesc {
+		sort.Slice(finalChirpSlice, func(i, j int) bool {
+			return finalChirpSlice[i].CreatedAt.After(finalChirpSlice[j].CreatedAt)
+		})
+	}
 	respondWithJson(w, http.StatusOK, finalChirpSlice)
 }
 
